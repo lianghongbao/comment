@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Highcharts</title>
+    <script src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <!--<script src="http://code.highcharts.com/highcharts.js"></script>-->
+    <!--<script src="public/static/js/china.js"></script>-->
+    <script src="public/static/js/highmaps.js"></script>
+    <!--省市-->
+    <script src="https://img.hcharts.cn/highcharts/modules/exporting.js"></script>
+    <script src="https://img.hcharts.cn/highcharts/modules/drilldown.js"></script>
+
+    <!--只有省份-->
+    <!--<script src="https://img.hcharts.cn/highmaps/highmaps.js"></script>-->
+    <script src="https://img.hcharts.cn/mapdata/geochina/china.js"></script>
+</head>
+<body>
+<div id="container" style="width: 550px; height: 400px; margin: 0 auto"></div>
+<div id="map" style="width: 550px; height: 400px; margin: 0 auto">></div>
+<!--<script>
+    var myChart = echarts.init(document.getElementById('container'));
+    var option = {
+        tooltip: {
+            //show: false //不显示提示标签
+            formatter: '{b}', //提示标签格式
+            backgroundColor: "#ff7f50",//提示标签背景颜色
+            textStyle: {color: "#fff"} //提示标签字体颜色
+        },
+        series: [{
+            type: 'map',
+            mapType: 'china',
+            label: {
+                normal: {
+                    show: true,//显示省份标签
+                    textStyle: {color: "#c71585"}//省份标签字体颜色
+                },
+                emphasis: {
+                    show: true,
+                    textStyle: {color: "#800080"}
+                }
+            },
+            itemStyle: {
+                normal: {
+                    borderWidth: .5,
+                    borderColor: '#009fe8',
+                    areaColor: "#ffefd5"
+                },
+                emphasis: {
+                    borderWidth: .5,
+                    borderColor: '#4b0082',
+                    areaColor: "#ffdead"
+                }
+            },
+            data: [
+                {name: '广东', selected: true}//福建为选中状态
+            ]
+        }],
+    };
+
+    myChart.setOption(option);
+    myChart.on('mouseover', function (params) {
+        var dataIndex = params.dataIndex;
+        //console.log(params);
+    });
+</script>-->
+
+<script>
+    Highcharts.setOptions({
+        lang: {
+            drillUpText: '< 返回 “{series.name}”'
+        }
+    });
+    var map = null,
+    geochina = 'https://data.jianshukeji.com/jsonp?filename=geochina/',
+    unDrilldown = ['taiwan', 'xianggang', 'aomen'];
+    // 获取中国地图数据并初始化图表
+    $.getJSON(geochina + 'china.json&callback=?', function(mapdata) {
+        var data = [];
+        // 随机数据
+        Highcharts.each(mapdata.features, function(md, index) {
+            data.push({
+                name: md.properties.name,
+                drilldown: md.properties.filename,
+                value: Math.floor((Math.random() * 100) + 1) // 生成 1 ~ 100 随机值
+            });
+        });
+        map = new Highcharts.Map('container', {
+            chart: {
+                events: {
+                    drilldown: function(e) {
+                        // 异步下钻
+                        if (e.point.drilldown && unDrilldown.indexOf(e.point.drilldown) === -1) {
+                            var pointName = e.point.properties.fullname;
+                            map.showLoading('下钻中，请稍后...');
+                            // 获取二级行政地区数据并更新图表
+                            $.getJSON(geochina +   e.point.drilldown + '.json&callback=?', function(data) {
+                                data = Highcharts.geojson(data);
+                                Highcharts.each(data, function(d) {
+                                    d.value = Math.floor((Math.random() * 100) + 1); // 生成 1 ~ 100 随机值
+                                });
+                                map.hideLoading();
+                                map.addSeriesAsDrilldown(e.point, {
+                                    name: e.point.name,
+                                    data: data,
+                                    dataLabels: {
+                                        enabled: true,
+                                        format: '{point.name}'
+                                    }
+                                });
+                                map.setTitle({
+                                    text: pointName
+                                });
+                            });
+                        }
+                    },
+                    drillup: function() {
+                        map.setTitle({
+                            text: '中国'
+                        });
+                    }
+                }
+            },
+            title: {
+                text: '中国地图'
+            },
+            subtitle: {
+                text: '<a href="https://www.hcharts.cn/mapdata">点击查看地图数据及详情</a>'
+            },
+            mapNavigation: {
+                enabled: true,
+                buttonOptions: {
+                    verticalAlign: 'bottom'
+                }
+            },
+            tooltip: {
+                useHTML: true,
+                headerFormat: '<table><tr><td>{point.name}</td></tr>',
+                pointFormat: '<tr><td>全称</td><td>{point.properties.fullname}</td></tr>' +
+                '<tr><td>行政编号</td><td>{point.properties.areacode}</td></tr>' +
+                '<tr><td>父级</td><td>{point.properties.parent}</td></tr>' +
+                '<tr><td>经纬度</td><td>{point.properties.longitude},{point.properties.latitude}</td></tr>' ,
+                footerFormat: '</table>'
+            },
+            colors: ['#7cb5ec', '#434348', '#90ed7d', '#f7a35c', '#8085e9',
+                '#f15c80', '#e4d354', '#2b908f', '#f45b5b', '#91e8e1'],
+            colorAxis: {
+                min: 0,
+                minColor: '#fff',
+                maxColor: '#006cee',
+                labels:{
+                    style:{
+                        "color":"red","fontWeight":"bold"
+                    }
+                }
+            },
+            series: [{
+                data: data,
+                mapData: mapdata,
+                joinBy: 'name',
+                name: '中国地图',
+                states: {
+                    hover: {
+                        color: '#a4edba'
+                    }
+                }
+            }]
+        });
+    });
+
+</script>
+
+<script src="public/static/js/chart.js"></script>
+</body>
+</html>
